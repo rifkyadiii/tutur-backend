@@ -21,75 +21,55 @@ class UserController extends Controller
    }
 
    public function store(Request $request)
-   {
-       $validator = Validator::make($request->all(), [
-           'name' => 'required|string|max:255',
-           'email' => 'required|string|email|max:255|unique:users',
-       ]);
-
-       if ($validator->fails()) {
-           return response()->json($validator->errors(), 400);
-       }
-
-       try {
-           $user = User::create([
-               'name' => $request->name,
-               'email' => $request->email,
-               'firebase_uid' => '',
-           ]);
-           return response()->json($user, 201);
-       } catch (Exception $e) {
-           Log::error('Registration failed:', ['error' => $e->getMessage()]);
-           return response()->json(['error' => $e->getMessage()], 500);
-       }
-   }
-
-    public function updateFirebaseUid(Request $request)
     {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'firebase_uid' => 'required|string|unique:users,firebase_uid',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 400);
+        }
+
         try {
-            $validator = Validator::make($request->all(), [
-                'user_id' => 'required|exists:users,id',
-                'firebase_uid' => 'required|string|unique:users,firebase_uid',
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'firebase_uid' => $request->firebase_uid,
+                'role' => 'user'
             ]);
 
-            if ($validator->fails()) {
-                return response()->json($validator->errors(), 400);
-            }
-
-            $user = User::findOrFail($request->user_id);
-            $user->firebase_uid = $request->firebase_uid;
-            $user->save();
-
-            return response()->json(['message' => 'Firebase UID updated successfully', 'user' => $user]);
+            return response()->json([
+                'message' => 'User created successfully',
+                'user' => $user,
+            ], 201);
         } catch (Exception $e) {
-            Log::error('Firebase UID update failed:', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to update Firebase UID'], 500);
+            Log::error('User registration failed:', ['error' => $e->getMessage()]);
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
-   public function show(Request $request)
+
+    public function show(Request $request)
     {
-        try {
-            $validator = Validator::make($request->all(), [
-                'user_id' => 'required|exists:users,id'
-            ]);
+       try {
+           $user = User::where('firebase_uid', $request->user_id)->first();
 
-            if ($validator->fails()) {
-                return response()->json($validator->errors(), 400);
-            }
+           if (!$user) {
+               return response()->json(['error' => 'User not found'], 404);
+           }
 
-            $authUser = auth()->user();
-            $user = User::findOrFail($request->user_id);
+           $authUser = auth()->user();
+           if ($authUser->role !== 'admin' && $authUser->id != $user->id) {
+               return response()->json(['error' => 'Unauthorized'], 403);
+           }
 
-            if ($authUser->role !== 'admin' && $authUser->id != $user->id) {
-                return response()->json(['error' => 'Unauthorized'], 403);
-            }
-
-            return response()->json($user);
-        } catch (Exception $e) {
-            Log::error('User fetch failed:', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'User not found'], 404);
-        }
+           return response()->json($user);
+       } catch (Exception $e) {
+           Log::error('User fetch failed:', ['error' => $e->getMessage()]);
+           return response()->json(['error' => 'User not found'], 404);
+       }
     }
 
     public function index(Request $request)

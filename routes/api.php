@@ -12,7 +12,6 @@ Route::post('/user/add', [UserController::class, 'store']);
 
 Route::middleware(['firebase.auth'])->group(function () {
     // Users
-    Route::put('/user/add-firebase-uid', [UserController::class, 'updateFirebaseUid']);
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/user', [UserController::class, 'show']);
     Route::put('/user/update', [UserController::class, 'update']);
