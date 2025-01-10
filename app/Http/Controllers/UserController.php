@@ -51,25 +51,26 @@ class UserController extends Controller
     }
 
 
-    public function show(Request $request)
-    {
-       try {
-           $user = User::where('firebase_uid', $request->user_id)->first();
+    public function show(Request $request) {
+        try {
+            $user = User::where('email', $request->email)
+                        ->orWhere('firebase_uid', $request->user_id)
+                        ->first();
 
-           if (!$user) {
-               return response()->json(['error' => 'User not found'], 404);
-           }
+            if (!$user) {
+                return response()->json(['error' => 'User not found'], 404);
+            }
 
-           $authUser = auth()->user();
-           if ($authUser->role !== 'admin' && $authUser->id != $user->id) {
-               return response()->json(['error' => 'Unauthorized'], 403);
-           }
+            $authUser = auth()->user();
+            if ($authUser->role !== 'admin' && $authUser->id != $user->id) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
 
-           return response()->json($user);
-       } catch (Exception $e) {
-           Log::error('User fetch failed:', ['error' => $e->getMessage()]);
-           return response()->json(['error' => 'User not found'], 404);
-       }
+            return response()->json($user);
+        } catch (Exception $e) {
+            Log::error('User fetch failed:', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'User not found'], 404);
+        }
     }
 
     public function index(Request $request)
@@ -134,6 +135,71 @@ class UserController extends Controller
            Log::error('User update failed:', ['error' => $e->getMessage()]);
            return response()->json(['error' => $e->getMessage()], 500);
        }
+    }
+
+    public function updatePhoto(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'photo' => 'required|image|max:2048',
+                'user_id' => 'required|exists:users,id'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json($validator->errors(), 400);
+            }
+
+            $authUser = auth()->user();
+            $user = User::findOrFail($request->user_id);
+
+            if ($authUser->role !== 'admin' && $authUser->id != $user->id) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            $photoUrl = null;
+            if ($request->hasFile('photo')) {
+                $photoUrl = $this->gcs->uploadFile($request->file('photo'), 'photos');
+            }
+
+            $user->photo_url = $photoUrl;
+            $user->save();
+
+            return response()->json($user);
+        } catch (Exception $e) {
+            Log::error('Photo update failed:', ['error' => $e->getMessage()]);
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+
+    public function updatePassword(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'user_id' => 'required|exists:users,id',
+                'password' => 'required|string|min:6'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json($validator->errors(), 400);
+            }
+
+            $authUser = auth()->user();
+            $user = User::findOrFail($request->user_id);
+
+            if ($authUser->role !== 'admin' && $authUser->id != $user->id) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            $this->auth->updateUser($user->firebase_uid, [
+                'password' => $request->password
+            ]);
+
+            return response()->json(['message' => 'Password updated successfully']);
+        } catch (Exception $e) {
+            Log::error('Password update failed:', ['error' => $e->getMessage()]);
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
     public function destroy(Request $request)

@@ -15,6 +15,8 @@ Route::middleware(['firebase.auth'])->group(function () {
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/user', [UserController::class, 'show']);
     Route::put('/user/update', [UserController::class, 'update']);
+    Route::put('/user/update-photo', [UserController::class, 'updatePhoto']);
+    Route::put('/user/update-password', [UserController::class, 'updatePassword']);
     Route::delete('/user/delete', [UserController::class, 'destroy']);
 
     // Albums

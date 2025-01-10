@@ -21,6 +21,7 @@ class CardController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'name' => 'required|string|max:12',
+                'spelling' => 'nullable|string|max:12',
                 'picture' => 'nullable|image|max:2048',
                 'voice' => 'nullable|file|mimes:mp3,wav,ogg,m4a|max:2048',
                 'album_id' => 'nullable|exists:albums,id'
@@ -47,6 +48,7 @@ class CardController extends Controller
 
            $card = Card::create([
                'name' => $request->name,
+               'spelling' => $request->spelling,
                'picture' => $pictureUrl,
                'voice' => $voiceUrl,
                'album_id' => $request->album_id
@@ -158,6 +160,7 @@ class CardController extends Controller
            $validator = Validator::make($request->all(), [
                'card_id' => 'required|exists:cards,id',
                'name' => 'nullable|string|max:12',
+               'spelling' => 'nullable|string|max:12',
                'picture' => 'nullable|image|max:2048',
                'voice' => 'nullable|file|mimes:mp3,wav,ogg,m4a|max:2048'
            ]);
@@ -174,6 +177,10 @@ class CardController extends Controller
            if ($request->has('name') && $request->name) {
                $card->name = $request->name;
            }
+
+            if ($request->has('spelling') && $request->spelling) {
+                $card->spelling = $request->spelling;
+            }
 
            if ($request->hasFile('picture')) {
                if ($card->picture) {

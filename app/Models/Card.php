@@ -12,6 +12,7 @@ class Card extends Model
 
     protected $fillable = [
         'name',
+        'spelling',
         'picture',
         'voice',
         'album_id',
