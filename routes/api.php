@@ -81,4 +81,14 @@ Route::middleware(['firebase.auth'])->group(function () {
 
     // Search
     Route::get('/search', [SearchController::class, 'search']);
+
+    // Sentence Template
+    Route::post('/sentence-templates/store', [SentenceTemplateController::class, 'store']);
+    Route::get('/sentence-templates/index', [SentenceTemplateController::class, 'index']);
+    Route::post('/sentence-templates/show', [SentenceTemplateController::class, 'show'])->name('sentence-templates.show');
+    Route::post('/sentence-templates/update', [SentenceTemplateController::class, 'update'])->name('sentence-templates.update');
+    Route::post('/sentence-templates/destroy', [SentenceTemplateController::class, 'destroy'])->name('sentence-templates.destroy');
+    Route::post('/sentence-templates/cards/add', [SentenceTemplateController::class, 'addCard'])->name('sentence-templates.cards.add');
+    Route::get('/sentence-templates/cards', [SentenceTemplateController::class, 'getCards'])->name('sentence-templates.cards.get');
+    Route::delete('/sentence-templates/cards/remove', [SentenceTemplateController::class, 'removeCard'])->name('sentence-templates.cards.remove');
  });

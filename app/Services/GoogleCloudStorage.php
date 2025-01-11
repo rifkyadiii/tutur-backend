@@ -12,7 +12,7 @@ class GoogleCloudStorage
     public function __construct()
     {
         $this->storage = new StorageClient([
-            'keyFilePath' => storage_path('app/tutur-api-5d09ca698071.json')
+            'keyFilePath' => storage_path('app/tutur-api-a3d132052fb3.json')
         ]);
         $this->bucket = $this->storage->bucket('tutur-bucket');
     }

@@ -25,6 +25,11 @@ class Card extends Model
         return $this->hasMany(Card::class);
     }
 
+    public function sentenceTemplates(): BelongsToMany
+    {
+        return $this->belongsToMany(SentenceTemplate::class, 'sentence_template_card');
+    }
+
     /**
      * Get the album that owns the card.
      */
