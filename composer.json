@@ -8,6 +8,7 @@
     "require": {
         "php": "^8.2",
         "darkaonline/l5-swagger": "8.*",
+        "google/apiclient": "^2.18",
         "google/cloud-storage": "^1.45",
         "kreait/laravel-firebase": "^5.10",
         "laravel/framework": "^11.31",

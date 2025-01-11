@@ -10,45 +10,53 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Exception;
 use Illuminate\Support\Facades\Log;
+use App\Services\GoogleCloudStorage;
 
 class UserController extends Controller
 {
-   protected $auth;
 
-   public function __construct(FirebaseAuth $auth)
-   {
-       $this->auth = $auth;
-   }
+    protected $auth;
+    protected $gcs;
 
-   public function store(Request $request)
+    public function __construct(FirebaseAuth $auth, GoogleCloudStorage $gcs)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'firebase_uid' => 'required|string|unique:users,firebase_uid',
+        $this->auth = $auth;
+        $this->gcs = $gcs;
+    }
+
+    public function store(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'name' => 'required|string|max:255',
+        'email' => 'required|string|email|max:255|unique:users',
+        'firebase_uid' => 'required|string|unique:users,firebase_uid',
+        'password' => 'nullable|string',
+        'is_google_user' => 'boolean'
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json($validator->errors(), 400);
+    }
+
+    try {
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'firebase_uid' => $request->firebase_uid,
+            'password' => $request->password ? base64_encode($request->password) : null,
+            'role' => 'user',
+            'is_google_user' => (bool)$request->is_google_user,
         ]);
 
-        if ($validator->fails()) {
-            return response()->json($validator->errors(), 400);
-        }
-
-        try {
-            $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'firebase_uid' => $request->firebase_uid,
-                'role' => 'user'
-            ]);
-
-            return response()->json([
-                'message' => 'User created successfully',
-                'user' => $user,
-            ], 201);
-        } catch (Exception $e) {
-            Log::error('User registration failed:', ['error' => $e->getMessage()]);
-            return response()->json(['error' => $e->getMessage()], 500);
-        }
+        return response()->json([
+            'message' => 'User created successfully',
+            'user' => $user,
+        ], 201);
+    } catch (Exception $e) {
+        Log::error('User registration failed:', ['error' => $e->getMessage()]);
+        return response()->json(['error' => $e->getMessage()], 500);
     }
+}
 
 
     public function show(Request $request) {
@@ -89,52 +97,58 @@ class UserController extends Controller
         return response()->json($users);
     }
 
+
     public function update(Request $request)
     {
-       try {
-           $validator = Validator::make($request->all(), [
-               'user_id' => 'required|exists:users,id',
-               'name' => 'nullable|string|max:255',
-               'email' => [
-                   'nullable',
-                   'string',
-                   'email',
-                   'max:255',
-                   Rule::unique('users')->ignore($request->user_id),
-               ],
-           ]);
+    try {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|exists:users,id',
+            'name' => 'nullable|string|max:255',
+            'email' => [
+                'nullable',
+                'string',
+                'email',
+                'max:255',
+                Rule::unique('users')->ignore($request->user_id),
+            ],
+        ]);
 
-           if ($validator->fails()) {
-               return response()->json($validator->errors(), 400);
-           }
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 400);
+        }
 
-           $authUser = auth()->user();
-           $user = User::findOrFail($request->user_id);
+        $authUser = auth()->user();
+        $user = User::findOrFail($request->user_id);
 
-           if ($authUser->role !== 'admin' && $authUser->id != $user->id) {
-               return response()->json(['error' => 'Unauthorized'], 403);
-           }
+        if ($authUser->role !== 'admin' && $authUser->id != $user->id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
 
-           if ($request->has('name')) {
-               $user->name = $request->name;
-           }
+        if ($request->has('name')) {
+            $user->name = $request->name;
+        }
 
-           if ($request->has('email') && $request->email && $user->email != $request->email) {
-               if ($user->firebase_uid) {
-                   $this->auth->updateUser($user->firebase_uid, [
-                       'email' => $request->email,
-                   ]);
-               }
-               $user->email = $request->email;
-           }
+        // Cek jika user Google saat mencoba update email
+        if ($request->has('email') && $request->email && $user->email != $request->email) {
+            if ($user->is_google_user) {
+                return response()->json(['error' => 'Cannot update email for Google account'], 400);
+            }
 
-           $user->save();
-           return response()->json($user);
+            if ($user->firebase_uid) {
+                $this->auth->updateUser($user->firebase_uid, [
+                    'email' => $request->email,
+                ]);
+            }
+            $user->email = $request->email;
+        }
 
-       } catch (Exception $e) {
-           Log::error('User update failed:', ['error' => $e->getMessage()]);
-           return response()->json(['error' => $e->getMessage()], 500);
-       }
+        $user->save();
+        return response()->json($user);
+
+    } catch (Exception $e) {
+        Log::error('User update failed:', ['error' => $e->getMessage()]);
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
     }
 
     public function updatePhoto(Request $request)
@@ -184,20 +198,17 @@ class UserController extends Controller
                 return response()->json($validator->errors(), 400);
             }
 
-            $authUser = auth()->user();
             $user = User::findOrFail($request->user_id);
+            $user->password = base64_encode($request->password);
+            $user->save();
 
-            if ($authUser->role !== 'admin' && $authUser->id != $user->id) {
-                return response()->json(['error' => 'Unauthorized'], 403);
-            }
-
+            // Update Firebase password
             $this->auth->updateUser($user->firebase_uid, [
                 'password' => $request->password
             ]);
 
             return response()->json(['message' => 'Password updated successfully']);
         } catch (Exception $e) {
-            Log::error('Password update failed:', ['error' => $e->getMessage()]);
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }

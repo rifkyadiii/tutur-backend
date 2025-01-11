@@ -56,23 +56,23 @@ class AlbumController extends Controller
 
     public function show(Request $request)
     {
-    $validator = Validator::make($request->all(), [
-        'album_id' => 'required|exists:albums,id'
-    ]);
+        $validator = Validator::make($request->all(), [
+            'album_id' => 'required|exists:albums,id'
+        ]);
 
-    if ($validator->fails()) {
-        return response()->json($validator->errors(), 400);
-    }
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 400);
+        }
 
-    $album = Album::with('cards')
-        ->where('user_id', auth()->id())
-        ->find($request->album_id);
+        $album = Album::with('cards')
+            ->where('user_id', auth()->id())
+            ->find($request->album_id);
 
-    if (!$album) {
-        return response()->json(['error' => 'Album not found'], 404);
-    }
+        if (!$album) {
+            return response()->json(['error' => 'Album not found'], 404);
+        }
 
-    return response()->json($album);
+        return response()->json($album);
     }
 
     public function update(Request $request)

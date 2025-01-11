@@ -17,13 +17,16 @@ class User extends Authenticatable
      *
      * @var list<string>
      */
+
+
     protected $fillable = [
         'firebase_uid',
         'name',
         'email',
         'role',
         'photo_url',
-        'password'
+        'password',
+        'is_google_user'
     ];
 
     /**
@@ -32,7 +35,7 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $hidden = [
-        // 
+        //
     ];
 
     /**
@@ -41,6 +44,6 @@ class User extends Authenticatable
      * @var array<string, string>
      */
     protected $casts = [
-        //
+        'is_google_user' => 'boolean'
     ];
 }

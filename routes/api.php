@@ -7,6 +7,7 @@ use App\Http\Controllers\{
    SearchController
 };
 use Illuminate\Support\Facades\Route;
+// use Google\Client;
 
 Route::post('/user/add', [UserController::class, 'store']);
 
@@ -15,7 +16,7 @@ Route::middleware(['firebase.auth'])->group(function () {
     Route::get('/users', [UserController::class, 'index']);
     Route::get('/user', [UserController::class, 'show']);
     Route::put('/user/update', [UserController::class, 'update']);
-    Route::put('/user/update-photo', [UserController::class, 'updatePhoto']);
+    Route::post('/user/update-photo', [UserController::class, 'updatePhoto']);
     Route::put('/user/update-password', [UserController::class, 'updatePassword']);
     Route::delete('/user/delete', [UserController::class, 'destroy']);
 
@@ -25,6 +26,49 @@ Route::middleware(['firebase.auth'])->group(function () {
     Route::get('/album', [AlbumController::class, 'show']);
     Route::put('/album/update', [AlbumController::class, 'update']);
     Route::delete('/album/delete', [AlbumController::class, 'destroy']);
+    // Route::get('/oauth2-token', function () {
+    //     try {
+    //         // Cek cache terlebih dahulu
+    //         $cachedToken = Cache::get('gcs_token');
+    //         if ($cachedToken) {
+    //             return response()->json([
+    //                 'access_token' => $cachedToken
+    //             ]);
+    //         }
+
+    //         $client = new Client();
+    //         $credentialsPath = storage_path('app/tutur-api-a3d132052fb3.json');
+
+    //         if (!file_exists($credentialsPath)) {
+    //             return response()->json([
+    //                 'error' => 'Service account credentials not found'
+    //             ], 500);
+    //         }
+
+    //         $client->setAuthConfig($credentialsPath);
+    //         $client->addScope('https://www.googleapis.com/auth/devstorage.read_only');
+
+    //         $token = $client->fetchAccessTokenWithAssertion();
+
+    //         if (!isset($token['access_token'])) {
+    //             return response()->json([
+    //                 'error' => 'Failed to obtain access token'
+    //             ], 500);
+    //         }
+
+    //         // Simpan token ke cache tanpa expiry (forever)
+    //         Cache::forever('gcs_token', $token['access_token']);
+
+    //         return response()->json([
+    //             'access_token' => $token['access_token']
+    //         ]);
+
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'error' => 'Failed to generate token: ' . $e->getMessage()
+    //         ], 500);
+    //     }
+    // })->middleware('throttle:60,1');
 
     // Cards
     Route::post('/card/add', [CardController::class, 'store']);
